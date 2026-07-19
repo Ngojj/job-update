@@ -1,0 +1,156 @@
+# ============================================================
+# Cấu hình Job Alert Bot — chỉnh keyword/nguồn ở đây, không cần sửa code
+# ============================================================
+
+sources:
+  vietnamworks:
+    enabled: true
+    # Mỗi query là một lượt tìm kiếm trên VietnamWorks
+    queries: ["fresher", "intern", "thực tập"]
+  topdev:
+    enabled: true
+    queries: ["fresher", "intern"]
+  itviec:
+    enabled: true
+    # Trang danh sách theo level: itviec.com/it-jobs/<page>
+    pages: ["fresher", "intern"]
+  linkedin:
+    # Endpoint không chính thức — LinkedIn có thể chặn IP GitHub Actions.
+    # Nguồn này lỗi thì các nguồn khác vẫn chạy bình thường.
+    enabled: true
+    queries:
+      - software fresher
+      - software intern
+      - data fresher
+      - data intern
+      - ai intern
+    # Tìm thẳng ở HCM để LinkedIn trả về nhiều job đúng khu vực hơn
+    location: Ho Chi Minh City, Vietnam
+    experience_levels: "1,2" # 1 = Internship, 2 = Entry level
+    posted_within_days: 7
+
+filters:
+  # Job PHẢI chứa ít nhất 1 keyword level (trong tiêu đề hoặc mô tả ngắn)
+  level_keywords:
+    - intern
+    - internship
+    - thực tập
+    - fresher
+    - entry level
+    - entry-level
+    - graduate
+    - mới tốt nghiệp
+    - không yêu cầu kinh nghiệm
+    - no experience
+
+  # ... VÀ ít nhất 1 keyword ngành
+  # Lưu ý: không dùng "engineer" đơn lẻ vì sẽ dính kỹ sư cơ khí/xây dựng
+  field_keywords:
+    - software
+    - developer
+    - dev
+    - software engineer
+    - data engineer
+    - ai engineer
+    - machine learning engineer
+    - ml engineer
+    - devops engineer
+    - qa engineer
+    - quality engineer
+    - cloud engineer
+    - system engineer
+    - security engineer
+    - network engineer
+    - computer engineer
+    - it engineer
+    - prompt engineer
+    - automation engineer
+    - lập trình
+    - phần mềm
+    - công nghệ thông tin
+    - data
+    - dữ liệu
+    - ai
+    - artificial intelligence
+    - machine learning
+    - ml
+    - deep learning
+    - backend
+    - back-end
+    - frontend
+    - front-end
+    - fullstack
+    - full-stack
+    - full stack
+    - web
+    - mobile
+    - android
+    - ios
+    - flutter
+    - python
+    - java
+    - javascript
+    - typescript
+    - .net
+    - dotnet
+    - c#
+    - c++
+    - golang
+    - nodejs
+    - node.js
+    - react
+    - angular
+    - vue
+    - sql
+    - database
+    - business intelligence
+    - qa
+    - tester
+    - testing
+    - devops
+    - cloud
+    - embedded
+
+  # Loại bỏ nếu TIÊU ĐỀ chứa các từ này (tránh nhiễu senior/lead)
+  exclude_keywords:
+    - senior
+    - sr.
+    - middle
+    - lead
+    - leader
+    - manager
+    - head of
+    - director
+    - principal
+    - trưởng phòng
+    - trưởng nhóm
+    - 3+ yoe
+    - 3+ years
+    - 4+ years
+    - 5+ years
+    - 3+ năm
+    - 4+ năm
+    - 5+ năm
+    - mechanical
+    - structural
+    - civil
+    - cơ khí
+    - xây dựng
+    - graphic design
+    - thiết kế đồ họa
+
+  # Lọc theo địa điểm. Để trống [] = nhận mọi nơi.
+  # Ví dụ: ["Hồ Chí Minh", "Hà Nội", "Remote"]
+  # (job ghi nhiều địa điểm vẫn được nhận nếu có 1 nơi khớp)
+  locations: ["Hồ Chí Minh", "HCM"]
+
+# Chế độ báo cáo:
+#   all = mỗi lần quét gửi TOÀN BỘ job đang tuyển khớp bộ lọc
+#   new = chỉ gửi job MỚI chưa từng báo (đỡ spam hơn)
+report_mode: all
+
+# Số job tối đa gửi mỗi lần chạy
+max_new_per_run: 60
+
+# Xoá job đã ghi nhớ cũ hơn N ngày
+seen_retention_days: 60
