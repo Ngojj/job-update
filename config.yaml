@@ -2,32 +2,107 @@
 # Cấu hình Job Alert Bot — chỉnh keyword/nguồn ở đây, không cần sửa code
 # ============================================================
 
+# Bộ từ khoá tìm kiếm tổ hợp: mỗi nguồn ghi `queries: "@matrix"` sẽ chạy
+# mọi cặp "<ngành> <level>" (vd "backend intern", "data fresher"...).
+search:
+  levels: [intern, fresher]
+  fields: [software, developer, backend, frontend, fullstack, mobile, data, ai,
+           machine learning, qa, tester, devops, embedded, java, python, ".net", react, nodejs]
+
 sources:
+  # ===================== JOB BOARD =====================
+  # max_pages = số trang tối đa lấy cho MỖI query (hết job thì tự dừng sớm)
   vietnamworks:
     enabled: true
-    # Mỗi query là một lượt tìm kiếm trên VietnamWorks
-    queries: ["fresher", "intern", "thực tập"]
+    max_pages: 4 # 50 job/trang, cho mỗi query
+    city_id: 29 # 29 = Hồ Chí Minh
+    # Quét TOÀN BỘ job theo level nhà tuyển dụng chọn: 1 = Fresher/Entry, 8 = Intern/Student
+    level_ids: [1, 8]
+    # + tìm theo từ khoá (bắt job ghi fresher/intern trong tiêu đề nhưng chọn level khác)
+    # API khớp chặt: chỉ dùng từ/cụm ngắn, không dùng "software intern" (ra 0 kết quả)
+    queries: ["intern", "fresher", "internship", "thực tập", "thực tập sinh", "graduate", "trainee"]
   topdev:
     enabled: true
-    queries: ["fresher", "intern"]
+    max_pages: 100 # 10 job/trang
+    region_ids: 79 # 79 = Hồ Chí Minh
+    # Quét TOÀN BỘ job theo level: 1616 = Thực tập, 12507 = Mới tốt nghiệp
+    level_ids: [1616, 12507]
+    # API khớp chặt từng từ → chỉ dùng từ đơn, không dùng cụm ("python intern" ra 0)
+    queries: ["fresher", "intern", "internship", "thực tập", "thực tập sinh", "graduate", "trainee"]
   itviec:
     enabled: true
+    max_pages: 6
     # Trang danh sách theo level: itviec.com/it-jobs/<page>
     pages: ["fresher", "intern"]
   linkedin:
     # Endpoint không chính thức — LinkedIn có thể chặn IP GitHub Actions.
     # Nguồn này lỗi thì các nguồn khác vẫn chạy bình thường.
     enabled: true
+    max_pages: 4 # ~10 job/trang
     queries:
       - software fresher
       - software intern
+      - developer intern
       - data fresher
       - data intern
       - ai intern
+      - machine learning intern
+      - qa intern
+      - devops intern
     # Tìm thẳng ở HCM để LinkedIn trả về nhiều job đúng khu vực hơn
     location: Ho Chi Minh City, Vietnam
     experience_levels: "1,2" # 1 = Internship, 2 = Entry level
-    posted_within_days: 7
+    posted_within_days: 14
+  topcv:
+    # TopCV hay chặn IP GitHub Actions bằng Cloudflare → lỗi thì bỏ qua nguồn này
+    enabled: true
+    max_pages: 3
+    queries: ["intern", "fresher", "thực tập", "thực tập sinh"]
+  careerviet:
+    enabled: true
+    max_pages: 5 # 50 job/trang
+    queries: ["intern", "fresher", "thực tập", "thực tập sinh", "internship", "trainee"]
+  glints:
+    enabled: true
+    max_pages: 3
+    location: Ho Chi Minh City
+    queries: "@matrix"
+
+  # ============ TRANG TUYỂN DỤNG CỦA CÔNG TY ============
+  # Đây là nguồn "gốc" — có cả job chưa được đăng lại trên các job board.
+  vng: # VNG, Zalo, ZaloPay, VNGGames, GreenNode (career.vng.com.vn)
+    enabled: true
+    max_pages: 20
+
+  smartrecruiters: # jobs.smartrecruiters.com/<id>
+    enabled: true
+    country: vn
+    companies:
+      - {id: BoschGroup, name: Bosch}
+      - {id: Grab, name: Grab}
+
+  workday: # <host>.myworkdayjobs.com — tập đoàn nước ngoài có văn phòng ở VN
+    enabled: true
+    search: Vietnam
+    companies:
+      - {name: Intel,      host: intel.wd1,           tenant: intel,      site: External}
+      - {name: Nvidia,     host: nvidia.wd5,          tenant: nvidia,     site: NVIDIAExternalCareerSite}
+      - {name: Marvell,    host: marvell.wd1,         tenant: marvell,    site: MarvellCareers}
+      - {name: Cisco,      host: cisco.wd5,           tenant: cisco,      site: Cisco_Careers}
+      - {name: Mastercard, host: mastercard.wd1,      tenant: mastercard, site: CorporateCareers}
+      - {name: Visa,       host: visa.wd5,            tenant: visa,       site: Visa}
+      - {name: Accenture,  host: accenture.wd103,     tenant: accenture,  site: AccentureCareers}
+      - {name: PwC,        host: pwc.wd3,             tenant: pwc,        site: Global_Experienced_Careers}
+      - {name: Salesforce, host: salesforce.wd12,     tenant: salesforce, site: External_Career_Site}
+      - {name: Medtronic,  host: medtronic.wd1,       tenant: medtronic,  site: MedtronicCareers}
+      - {name: Manulife,   host: manulife.wd3,        tenant: manulife,   site: MFCJH_Jobs}
+      - {name: Citi,       host: citi.wd5,            tenant: citi,       site: "2"}
+      - {name: KLA,        host: kla.wd1,             tenant: kla,        site: Search}
+      - {name: LSEG,       host: lseg.wd3,            tenant: lseg,       site: Careers}
+
+  amazon: # Amazon / AWS (amazon.jobs)
+    enabled: true
+    country_code: VNM
 
 filters:
   # Job PHẢI chứa ít nhất 1 keyword level (trong tiêu đề hoặc mô tả ngắn)
@@ -40,6 +115,10 @@ filters:
     - entry-level
     - graduate
     - mới tốt nghiệp
+    - mới ra trường
+    - trainee
+    - tập sự
+    - open for fresher
     - không yêu cầu kinh nghiệm
     - no experience
 
@@ -150,7 +229,7 @@ filters:
 report_mode: all
 
 # Số job tối đa gửi mỗi lần chạy
-max_new_per_run: 60
+max_new_per_run: 400
 
 # Xoá job đã ghi nhớ cũ hơn N ngày
 seen_retention_days: 60

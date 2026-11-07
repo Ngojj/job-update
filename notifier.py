@@ -1,6 +1,7 @@
 """Gửi thông báo job mới về Telegram."""
 import html
 import os
+import time
 from datetime import datetime, timedelta, timezone
 
 import requests
@@ -30,7 +31,7 @@ def _format_job(job: dict) -> str:
     return "\n".join(lines)
 
 
-def send_jobs(jobs: list[dict], mode: str = "new") -> None:
+def send_jobs(jobs: list[dict], mode: str = "new", warnings: list[str] | None = None) -> None:
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID")
     if not token or not chat_id:
@@ -44,6 +45,9 @@ def send_jobs(jobs: list[dict], mode: str = "new") -> None:
     else:
         title = f"💼 <b>Có {len(jobs)} việc làm Intern/Fresher mới!</b>"
     header = f"{title}\n🕐 Quét lúc {now}\n"
+    if warnings:
+        # Báo rõ nguồn nào không quét được để biết danh sách có thể chưa đầy đủ
+        header += f"⚠️ Không quét được: {html.escape(', '.join(warnings))}\n"
     blocks = [_format_job(j) for j in jobs]
 
     # Gom nhiều job vào ít tin nhắn nhất có thể (mỗi tin < 4096 ký tự)
@@ -56,7 +60,9 @@ def send_jobs(jobs: list[dict], mode: str = "new") -> None:
             current += "\n\n" + block
     messages.append(current)
 
-    for text in messages:
+    for i, text in enumerate(messages):
+        if i:
+            time.sleep(1.1)  # Telegram giới hạn ~1 tin/giây mỗi chat
         r = requests.post(
             f"https://api.telegram.org/bot{token}/sendMessage",
             json={

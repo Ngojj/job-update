@@ -1,7 +1,9 @@
 # 💼 Job Alert Bot — Báo việc Intern/Fresher về Telegram
 
-Tự động quét **VietnamWorks, ITviec, TopDev** mỗi 2 tiếng, lọc các vị trí
-**Intern / Fresher** ngành **Software / Data / AI**, và gửi job **mới** về Telegram.
+Tự động quét **job board** (VietnamWorks, TopDev, ITviec, LinkedIn, TopCV, CareerViet, Glints)
+và **trang tuyển dụng trực tiếp của công ty** (VNG/Zalo, Bosch, Grab, Intel, Nvidia, Cisco, Visa,
+Mastercard, Amazon...), lọc các vị trí **Intern / Fresher** ngành **Software / Data / AI** ở HCM
+và gửi về Telegram.
 Chạy miễn phí trên GitHub Actions — không cần bật máy tính.
 
 ## Kiến trúc
@@ -9,7 +11,7 @@ Chạy miễn phí trên GitHub Actions — không cần bật máy tính.
 ```
 GitHub Actions (cron 2h/lần)
   └─ main.py
-      ├─ scrapers/   → lấy job từ VietnamWorks (API), TopDev (API), ITviec (HTML)
+      ├─ scrapers/   → job board (API/HTML) + trang tuyển dụng công ty (ATS công khai)
       ├─ filters.py  → lọc level (intern/fresher) + ngành (software/data/AI) + địa điểm
       ├─ storage.py  → data/seen_jobs.json: nhớ job đã gửi, không báo trùng
       └─ notifier.py → gửi tin nhắn Telegram (gom nhiều job / 1 tin)
@@ -71,6 +73,25 @@ Mọi thứ nằm trong [config.yaml](config.yaml):
 - `max_new_per_run` — số job tối đa mỗi lần gửi
 - Đổi tần suất quét: sửa `cron` trong [.github/workflows/job-alert.yml](.github/workflows/job-alert.yml)
 
+## Nguồn dữ liệu
+
+| Nhóm | Nguồn | Cách lấy | Phạm vi |
+|---|---|---|---|
+| Job board | VietnamWorks | API nội bộ, lọc `jobLevelId` 1 (Fresher) + 8 (Intern) + HCM | **toàn bộ** job thuộc level đó |
+| Job board | TopDev | API nội bộ, lọc `job_levels_ids` Thực tập + Mới tốt nghiệp + HCM | **toàn bộ** |
+| Job board | ITviec | HTML `/it-jobs/fresher`, `/it-jobs/intern`, có phân trang | toàn bộ 2 trang level |
+| Job board | LinkedIn | guest endpoint, `f_E=1,2`, nhiều query | best-effort (có thể bị chặn) |
+| Job board | TopCV, CareerViet, Glints | HTML / `__NEXT_DATA__`, theo từ khoá | theo từ khoá |
+| Công ty | VNG, Zalo, ZaloPay, VNGGames | `career.vng.com.vn` (`__NEXT_DATA__`) | toàn bộ job đang mở |
+| Công ty | Bosch, Grab | SmartRecruiters API công khai | toàn bộ job ở VN |
+| Công ty | Intel, Nvidia, Marvell, Cisco, Mastercard, Visa, Accenture, PwC, Salesforce, Medtronic, Manulife, Citi, KLA, LSEG | Workday API công khai | toàn bộ job ở VN |
+| Công ty | Amazon / AWS | `amazon.jobs/search.json` | toàn bộ job ở VN |
+
+### Thêm công ty mới
+- Công ty dùng **SmartRecruiters** (URL dạng `jobs.smartrecruiters.com/<Tên>`): thêm `{id: <Tên>, name: ...}` vào `sources.smartrecruiters.companies`.
+- Công ty dùng **Workday** (URL dạng `<host>.myworkdayjobs.com/<site>`): thêm `{name, host, tenant, site}` vào `sources.workday.companies`.
+- Công ty dùng trang riêng (FPT, Viettel, MoMo, Shopee, Tiki...): chưa có API công khai → tạm thời job của họ vẫn xuất hiện qua VietnamWorks/TopDev/ITviec/LinkedIn.
+
 ## Ghi chú về LinkedIn / TopCV
 
 - **LinkedIn**: dùng endpoint "jobs-guest" (xem không cần đăng nhập) với filter chính chủ
@@ -79,12 +100,16 @@ Mọi thứ nằm trong [config.yaml](config.yaml):
   GitHub Actions, lỗi 429/999). Nguồn này lỗi thì các nguồn khác vẫn chạy bình thường.
   Nếu bị chặn thường xuyên trên Actions, đặt `sources.linkedin.enabled: false` và bật
   **LinkedIn Job Alerts qua email** thay thế.
-- **TopCV**: chặn bot bằng Cloudflare (HTTP 403) — cần headless browser, sẽ thêm ở phase sau.
+- **TopCV**: chặn bot bằng Cloudflare — chạy được trên máy nhà nhưng hay bị 403 trên IP GitHub
+  Actions. Nguồn này lỗi thì bỏ qua; tin Telegram sẽ ghi rõ "⚠️ Không quét được: topcv".
 
 ## Ghi chú kỹ thuật
 
 - VietnamWorks & TopDev: gọi API JSON nội bộ mà chính website của họ dùng → ổn định hơn parse HTML.
+  TopDev dùng tham số `keyword` (số ít) — `keywords` bị API bỏ qua; mỗi job nhiều chi nhánh được đếm
+  nhiều dòng nên `total` lớn hơn số job thật.
 - ITviec: parse HTML trang `/it-jobs/fresher` và `/it-jobs/intern` (selector: `h3[data-url]`).
+- Nguồn nào trả 0 job hoặc lỗi sẽ được cảnh báo ngay trong tin Telegram (danh sách có thể chưa đầy đủ).
 - Job "đã gửi" được nhớ 60 ngày rồi tự xoá (`seen_retention_days`).
 - Một nguồn lỗi không làm sập cả pipeline — các nguồn còn lại vẫn chạy bình thường.
 "# job-update" 

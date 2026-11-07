@@ -19,6 +19,15 @@ from storage import load_seen, mark_seen, save_seen
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.yaml")
 
 
+def expand_queries(source_cfg: dict, search_cfg: dict) -> dict:
+    """queries: "@matrix" → tổ hợp (ngành × level) từ mục `search` trong config."""
+    if source_cfg.get("queries") == "@matrix":
+        source_cfg = dict(source_cfg)
+        source_cfg["queries"] = [f"{f} {lv}" for f in search_cfg.get("fields", [])
+                                 for lv in search_cfg.get("levels", [])]
+    return source_cfg
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true",
@@ -34,8 +43,11 @@ def main() -> int:
         if not source_cfg.get("enabled", False):
             continue
         try:
-            jobs = SCRAPERS[name](source_cfg)
+            jobs = SCRAPERS[name](expand_queries(source_cfg, cfg.get("search", {})))
             print(f"[{name}] lấy được {len(jobs)} job")
+            if not jobs:
+                print(f"[{name}] CẢNH BÁO: 0 job — nguồn có thể đã đổi cấu trúc", file=sys.stderr)
+                errors.append(f"{name} (0 job)")
             all_jobs.extend(jobs)
         except Exception as e:
             print(f"[{name}] LỖI: {type(e).__name__}: {e}", file=sys.stderr)
@@ -73,7 +85,7 @@ def main() -> int:
     if len(new_jobs) > cap:
         print(f"Chỉ gửi {cap}/{len(new_jobs)} job (giới hạn max_new_per_run)")
     if to_send:
-        send_jobs(to_send, mode=mode)
+        send_jobs(to_send, mode=mode, warnings=errors)
         print(f"Đã gửi {len(to_send)} job về Telegram")
     else:
         print("Không có job mới — không gửi gì")
@@ -85,6 +97,8 @@ def main() -> int:
             mark_seen(seen, j["id"])
     save_seen(seen, cfg.get("seen_retention_days", 60))
 
+    if errors:
+        print(f"Nguồn lỗi/rỗng lần này: {', '.join(errors)}")
     return 1 if errors and not all_jobs else 0
 
 
